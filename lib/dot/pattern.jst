@@ -10,10 +10,15 @@
      NOT mitigate ReDoS -- catastrophic backtracking does not throw). For real
      ReDoS resistance pass a linear-time engine via `code.regExp`, e.g.
        new Ajv({$data: true, code: {regExp: require('re2')}})
-     This mirrors the upstream v8 fix in ajv@720a23f. */
+     This mirrors the upstream v8 fix in ajv@720a23f.
+
+     The `typeof self !== "undefined" && self && self._opts ...` chain keeps
+     this snippet safe when `self` is unavailable (ajv-pack standalone
+     validators) or resolves to the browser global (Window has no `_opts`).
+     In those environments we silently fall back to the native RegExp. */
   var {{=$valid}} = true;
   try {
-    {{=$valid}} = new ((self._opts.code && self._opts.code.regExp) || RegExp)({{=$schemaValue}}).test({{=$data}});
+    {{=$valid}} = new ((typeof self !== 'undefined' && self && self._opts && self._opts.code && self._opts.code.regExp) || RegExp)({{=$schemaValue}}).test({{=$data}});
   } catch (e) {
     {{=$valid}} = false;
   }
