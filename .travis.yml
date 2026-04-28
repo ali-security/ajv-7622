@@ -8,11 +8,16 @@ jobs:
   include:
     - node_js: 10
       script:
-        - npm run lint
         - npm run build
         - npm run test-cov
     - node_js: 12
+      script:
+        - npm run build
+        - npm run test-spec
     - node_js: 14
+      script:
+        - npm run build
+        - npm run test-spec
 after_script:
   - codeclimate-test-reporter < coverage/lcov.info
   - coveralls < coverage/lcov.info
