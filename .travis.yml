@@ -1,4 +1,6 @@
 language: node_js
+install:
+  - npm install --ignore-scripts
 before_script:
   - git submodule update --init
   - npm install -g codeclimate-test-reporter
