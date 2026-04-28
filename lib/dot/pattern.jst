@@ -3,12 +3,19 @@
 {{# def.setupKeyword }}
 {{# def.$data }}
 
-{{
-  var $regexp = $isData
-                ? '(new RegExp(' + $schemaValue + '))'
-                : it.usePattern($schema);
-}}
-
-if ({{# def.$dataNotType:'string' }} !{{=$regexp}}.test({{=$data}}) ) {
-  {{# def.error:'pattern' }}
-} {{? $breakOnError }} else { {{?}}
+{{? $isData }}
+  var {{=$valid}} = true;
+  {{? it.opts.unicodeRegExp }}
+    try { {{=$valid}} = new RegExp({{=$schemaValue}}, 'u').test({{=$data}}); } catch (e) { {{=$valid}} = false; }
+  {{??}}
+    try { {{=$valid}} = new RegExp({{=$schemaValue}}).test({{=$data}}); } catch (e) { {{=$valid}} = false; }
+  {{?}}
+  if ({{# def.$dataNotType:'string' }} !{{=$valid}}) {
+{{??}}
+  {{
+    var $regexp = it.usePattern($schema);
+  }}
+  if (!{{=$regexp}}.test({{=$data}}) ) {
+{{?}}
+    {{# def.error:'pattern' }}
+  } {{? $breakOnError }} else { {{?}}
