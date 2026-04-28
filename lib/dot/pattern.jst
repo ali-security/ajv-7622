@@ -4,12 +4,19 @@
 {{# def.$data }}
 
 {{? $isData }}
+  /* CVE-2025-69873: when `pattern` comes from $data the regex string is
+     attacker-controlled. We construct it at runtime and wrap the call in
+     try/catch so an invalid regex string fails validation gracefully (it does
+     NOT mitigate ReDoS -- catastrophic backtracking does not throw). For real
+     ReDoS resistance pass a linear-time engine via `code.regExp`, e.g.
+       new Ajv({$data: true, code: {regExp: require('re2')}})
+     This mirrors the upstream v8 fix in ajv@720a23f. */
   var {{=$valid}} = true;
-  {{? it.opts.unicodeRegExp }}
-    try { {{=$valid}} = new RegExp({{=$schemaValue}}, 'u').test({{=$data}}); } catch (e) { {{=$valid}} = false; }
-  {{??}}
-    try { {{=$valid}} = new RegExp({{=$schemaValue}}).test({{=$data}}); } catch (e) { {{=$valid}} = false; }
-  {{?}}
+  try {
+    {{=$valid}} = new ((self._opts.code && self._opts.code.regExp) || RegExp)({{=$schemaValue}}).test({{=$data}});
+  } catch (e) {
+    {{=$valid}} = false;
+  }
   if ({{# def.$dataNotType:'string' }} !{{=$valid}}) {
 {{??}}
   {{
