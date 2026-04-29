@@ -1,0 +1,59 @@
+name: ReDoS test (CVE-2025-69873)
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# Runs the CVE-2025-69873 spec with the optional `re2` engine installed so
+# the `itRe2`-gated tests actually execute (they are silently skipped when
+# `re2` is absent). `re2` is intentionally NOT a regular dependency of this
+# package; it is installed only inside this job.
+jobs:
+  redos-test:
+    name: Run ReDoS spec with re2 engine
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts
+
+      - name: Install re2 (native, with build scripts)
+        run: npm install --no-save re2@^1.21.4
+
+      - name: Build dot templates
+        run: npm run build
+
+      - name: Run CVE-2025-69873 spec
+        run: npx mocha spec/issues/cve_2025_69873_redos_attack.spec.js -R spec
+
+      - name: Sanity check - assert re2-gated tests were not skipped
+        # The spec uses `it.skip` when re2 is missing. Re-run with the JSON
+        # reporter and fail the job if any test in this file was pending.
+        run: |
+          npx mocha spec/issues/cve_2025_69873_redos_attack.spec.js -R json > mocha-report.json
+          node -e '
+            var r = require("./mocha-report.json");
+            if (r.stats.pending > 0) {
+              console.error("ReDoS spec has " + r.stats.pending + " pending test(s); re2 was not loaded.");
+              r.pending.forEach(function(t){ console.error("  - " + t.fullTitle); });
+              process.exit(1);
+            }
+            if (r.stats.failures > 0) {
+              console.error("ReDoS spec has " + r.stats.failures + " failing test(s).");
+              process.exit(1);
+            }
+            console.log("OK: " + r.stats.passes + " passed, 0 pending, 0 failed.");
+          '
